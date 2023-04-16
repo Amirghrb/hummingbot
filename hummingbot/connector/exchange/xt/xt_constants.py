@@ -8,7 +8,7 @@ MAX_ORDER_ID_LEN = 32
 
 # Base URL
 REST_URL = "https://sapi.xt.{}/"
-WSS_URL = "wss://stream.xt.{}:9443/ws"
+WSS_URL = "wss://stream.xt.{}:9443/ws/"
 
 PUBLIC_API_VERSION = "v4"
 PRIVATE_API_VERSION = "v4"

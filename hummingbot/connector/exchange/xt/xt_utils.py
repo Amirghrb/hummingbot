@@ -7,7 +7,7 @@ from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, C
 from hummingbot.core.data_type.trade_fee import TradeFeeSchema
 
 CENTRALIZED = True
-EXAMPLE_PAIR = "ZRX-ETH"
+EXAMPLE_PAIR = "ETH-USDT"
 
 DEFAULT_FEES = TradeFeeSchema(
     maker_percent_fee_decimal=Decimal("0.001"),
@@ -16,63 +16,33 @@ DEFAULT_FEES = TradeFeeSchema(
 )
 
 
-def is_exchange_information_valid(exchange_info: Dict[str, Any]) -> bool:
+def is_exchange_information_valid(symbol_info: Dict[str, Any]) -> bool:
     """
     Verifies if a trading pair is enabled to operate with based on its exchange information
     :param exchange_info: the exchange information for a trading pair
     :return: True if the trading pair is enabled, False otherwise
     """
-    return exchange_info.get("status", None) == "TRADING" and "SPOT" in exchange_info.get("permissions", list())
+    state=symbol_info.get("state", None)
+    trading=symbol_info.get("tradingEnabled", None)
+    openApi=symbol_info.get("openapiEnabled", None)
+    return  state == "ONLINE" and trading == True and openApi==True
 
 
-class BinanceConfigMap(BaseConnectorConfigMap):
-    connector: str = Field(default="binance", const=True, client_data=None)
-    binance_api_key: SecretStr = Field(
+class XtConfigMap(BaseConnectorConfigMap):
+    connector: str = Field(default="xt", const=True, client_data=None)
+    xt_api_key: SecretStr = Field(
         default=...,
         client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your Binance API key",
+            prompt=lambda cm: "Enter your XT API key",
             is_secure=True,
             is_connect_key=True,
             prompt_on_new=True,
         )
     )
-    binance_api_secret: SecretStr = Field(
+    xt_api_secret: SecretStr = Field(
         default=...,
         client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your Binance API secret",
-            is_secure=True,
-            is_connect_key=True,
-            prompt_on_new=True,
-        )
-    )
-
-    class Config:
-        title = "binance"
-
-
-KEYS = BinanceConfigMap.construct()
-
-OTHER_DOMAINS = ["binance_us"]
-OTHER_DOMAINS_PARAMETER = {"binance_us": "us"}
-OTHER_DOMAINS_EXAMPLE_PAIR = {"binance_us": "BTC-USDT"}
-OTHER_DOMAINS_DEFAULT_FEES = {"binance_us": DEFAULT_FEES}
-
-
-class BinanceUSConfigMap(BaseConnectorConfigMap):
-    connector: str = Field(default="binance_us", const=True, client_data=None)
-    binance_api_key: SecretStr = Field(
-        default=...,
-        client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your Binance US API key",
-            is_secure=True,
-            is_connect_key=True,
-            prompt_on_new=True,
-        )
-    )
-    binance_api_secret: SecretStr = Field(
-        default=...,
-        client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your Binance US API secret",
+            prompt=lambda cm: "Enter your XT API secret",
             is_secure=True,
             is_connect_key=True,
             prompt_on_new=True,
@@ -80,7 +50,41 @@ class BinanceUSConfigMap(BaseConnectorConfigMap):
     )
 
     class Config:
-        title = "binance_us"
+        title = "xt"
+
+### for another domain
+
+# KEYS = XtConfigMap.construct()
+
+# OTHER_DOMAINS = ["xt_us"]
+# OTHER_DOMAINS_PARAMETER = {"xt_us": "us"}
+# OTHER_DOMAINS_EXAMPLE_PAIR = {"xt_us": "BTC-USDT"}
+# OTHER_DOMAINS_DEFAULT_FEES = {"xt_us": DEFAULT_FEES}
 
 
-OTHER_DOMAINS_KEYS = {"binance_us": BinanceUSConfigMap.construct()}
+# class XtUSConfigMap(BaseConnectorConfigMap):
+#     connector: str = Field(default="xt_us", const=True, client_data=None)
+#     xt_api_key: SecretStr = Field(
+#         default=...,
+#         client_data=ClientFieldData(
+#             prompt=lambda cm: "Enter your XT US API key",
+#             is_secure=True,
+#             is_connect_key=True,
+#             prompt_on_new=True,
+#         )
+#     )
+#     xt_api_secret: SecretStr = Field(
+#         default=...,
+#         client_data=ClientFieldData(
+#             prompt=lambda cm: "Enter your XT US API secret",
+#             is_secure=True,
+#             is_connect_key=True,
+#             prompt_on_new=True,
+#         )
+#     )
+
+#     class Config:
+#         title = "xt_us"
+
+
+# OTHER_DOMAINS_KEYS = {"xt_us": XtUSConfigMap.construct()}
