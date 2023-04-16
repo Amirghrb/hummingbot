@@ -7,29 +7,36 @@ HBOT_ORDER_ID_PREFIX = "x-XEKWYICX"
 MAX_ORDER_ID_LEN = 32
 
 # Base URL
-REST_URL = "https://api.binance.{}/api/"
-WSS_URL = "wss://stream.binance.{}:9443/ws"
+REST_URL = "https://sapi.xt.{}/"
+WSS_URL = "wss://stream.xt.{}:9443/ws"
 
-PUBLIC_API_VERSION = "v3"
-PRIVATE_API_VERSION = "v3"
+PUBLIC_API_VERSION = "v4"
+PRIVATE_API_VERSION = "v4"
 
 # Public API endpoints or BinanceClient function
-TICKER_PRICE_CHANGE_PATH_URL = "/ticker/24hr"
-TICKER_BOOK_PATH_URL = "/ticker/bookTicker"
-EXCHANGE_INFO_PATH_URL = "/exchangeInfo"
-PING_PATH_URL = "/ping"
-SNAPSHOT_PATH_URL = "/depth"
-SERVER_TIME_PATH_URL = "/time"
+
+#notSupported
+##EXCHANGE_INFO_PATH_URL = "/exchangeInfo"
+##PING_PATH_URL = "/ping"
+
+TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/24h"
+TICKER_BOOK_PATH_URL = "/public/ticker/book"
+SERVER_TIME_PATH_URL = "/public/time"
+SNAPSHOT_PATH_URL = "/public/depth"
+
 
 # Private API endpoints or BinanceClient function
-ACCOUNTS_PATH_URL = "/account"
-MY_TRADES_PATH_URL = "/myTrades"
-ORDER_PATH_URL = "/order"
-BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
-
+ACCOUNTS_PATH_URL = "/user/account"
+MY_TRADES_PATH_URL = "/trade"
 WS_HEARTBEAT_TIME_INTERVAL = 30
+ORDER_PATH_URL = "/order"
 
-# Binance params
+#notSupported
+##BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
+
+
+
+# XT params
 
 SIDE_BUY = "BUY"
 SIDE_SELL = "SELL"
@@ -38,6 +45,11 @@ TIME_IN_FORCE_GTC = "GTC"  # Good till cancelled
 TIME_IN_FORCE_IOC = "IOC"  # Immediate or cancel
 TIME_IN_FORCE_FOK = "FOK"  # Fill or kill
 
+BIZ_TYPE_SPOT="SPOT"
+BIZ_TYPE_LEVERAGE="LEVER"
+
+ORDER_TYPE_LIMIT="LIMIT"
+ORDER_TYPE_MARKET="MARKET"
 # Rate Limit Type
 REQUEST_WEIGHT = "REQUEST_WEIGHT"
 ORDERS = "ORDERS"
@@ -49,7 +61,8 @@ ONE_MINUTE = 60
 ONE_SECOND = 1
 ONE_DAY = 86400
 
-MAX_REQUEST = 5000
+#increase with Cautious
+MAX_REQUEST = 3000
 
 # Order States
 ORDER_STATE = {
@@ -108,7 +121,8 @@ RATE_LIMITS = [
                              LinkedLimitWeightPair(RAW_REQUESTS, 1)])
 ]
 
-ORDER_NOT_EXIST_ERROR_CODE = -2013
-ORDER_NOT_EXIST_MESSAGE = "Order does not exist"
-UNKNOWN_ORDER_ERROR_CODE = -2011
+ORDER_NOT_EXIST_ERROR_CODE = "ORDER_005"
+ORDER_NOT_EXIST_MESSAGE = "Order not exist"
+
+UNKNOWN_ORDER_ERROR_CODE = "ORDER_1-6"
 UNKNOWN_ORDER_MESSAGE = "Unknown order sent"
