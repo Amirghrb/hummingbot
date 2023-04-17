@@ -16,9 +16,9 @@ PRIVATE_API_VERSION = "v4"
 # Public API endpoints or BinanceClient function
 
 #notSupported
-##EXCHANGE_INFO_PATH_URL = "/exchangeInfo"
 ##PING_PATH_URL = "/ping"
 
+EXCHANGE_INFO_PATH_URL = "/public/symbol"
 TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/24h"
 TICKER_BOOK_PATH_URL = "/public/ticker/book"
 SERVER_TIME_PATH_URL = "/public/time"
@@ -77,7 +77,7 @@ ORDER_STATE = {
 }
 
 # Websocket event types
-DIFF_EVENT_TYPE = "depthUpdate"
+DIFF_EVENT_TYPE = "depth_update"
 TRADE_EVENT_TYPE = "trade"
 
 RATE_LIMITS = [

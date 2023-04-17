@@ -52,39 +52,38 @@ class XtConfigMap(BaseConnectorConfigMap):
     class Config:
         title = "xt"
 
-### for another domain
+### if you need to add another domain appkey and secret use this 
+    # KEYS = XtConfigMap.construct()
 
-# KEYS = XtConfigMap.construct()
-
-# OTHER_DOMAINS = ["xt_us"]
-# OTHER_DOMAINS_PARAMETER = {"xt_us": "us"}
-# OTHER_DOMAINS_EXAMPLE_PAIR = {"xt_us": "BTC-USDT"}
-# OTHER_DOMAINS_DEFAULT_FEES = {"xt_us": DEFAULT_FEES}
-
-
-# class XtUSConfigMap(BaseConnectorConfigMap):
-#     connector: str = Field(default="xt_us", const=True, client_data=None)
-#     xt_api_key: SecretStr = Field(
-#         default=...,
-#         client_data=ClientFieldData(
-#             prompt=lambda cm: "Enter your XT US API key",
-#             is_secure=True,
-#             is_connect_key=True,
-#             prompt_on_new=True,
-#         )
-#     )
-#     xt_api_secret: SecretStr = Field(
-#         default=...,
-#         client_data=ClientFieldData(
-#             prompt=lambda cm: "Enter your XT US API secret",
-#             is_secure=True,
-#             is_connect_key=True,
-#             prompt_on_new=True,
-#         )
-#     )
-
-#     class Config:
-#         title = "xt_us"
+    # OTHER_DOMAINS = ["xt_us"]
+    # OTHER_DOMAINS_PARAMETER = {"xt_us": "us"}
+    # OTHER_DOMAINS_EXAMPLE_PAIR = {"xt_us": "BTC-USDT"}
+    # OTHER_DOMAINS_DEFAULT_FEES = {"xt_us": DEFAULT_FEES}
 
 
-# OTHER_DOMAINS_KEYS = {"xt_us": XtUSConfigMap.construct()}
+    # class XtUSConfigMap(BaseConnectorConfigMap):
+    #     connector: str = Field(default="xt_us", const=True, client_data=None)
+    #     xt_api_key: SecretStr = Field(
+    #         default=...,
+    #         client_data=ClientFieldData(
+    #             prompt=lambda cm: "Enter your XT US API key",
+    #             is_secure=True,
+    #             is_connect_key=True,
+    #             prompt_on_new=True,
+    #         )
+    #     )
+    #     xt_api_secret: SecretStr = Field(
+    #         default=...,
+    #         client_data=ClientFieldData(
+    #             prompt=lambda cm: "Enter your XT US API secret",
+    #             is_secure=True,
+    #             is_connect_key=True,
+    #             prompt_on_new=True,
+    #         )
+    #     )
+
+    #     class Config:
+    #         title = "xt_us"
+
+
+    # OTHER_DOMAINS_KEYS = {"xt_us": XtUSConfigMap.construct()}
