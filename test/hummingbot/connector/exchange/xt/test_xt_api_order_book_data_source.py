@@ -38,7 +38,7 @@ class XtAPIOrderBookDataSourceUnitTests(unittest.TestCase):
         self.listening_task = None
         self.mocking_assistant = NetworkMockingAssistant()
 
-     = ClientConfigAdapter(ClientConfigMap())
+        client_config_map = ClientConfigAdapter(ClientConfigMap())
         self.connector = XtExchange(
             client_config_map=client_config_map,
             xt_api_key='e4078472-4359-4eda-85e7-5ada79be17d4',
@@ -387,8 +387,7 @@ class XtAPIOrderBookDataSourceUnitTests(unittest.TestCase):
         mock_api.get(regex_url, exception=Exception, repeat=True)
 
         self.listening_task = self.ev_loop.create_task(
-            self.data_source.listen_for_order_book_sna,
-            pshots(self.ev_loop, msg_queue)
+            self.data_source.listen_for_order_book_snapshots(self.ev_loop, msg_queue)
         )
         self.async_run_with_timeout(self.resume_test_event.wait())
 

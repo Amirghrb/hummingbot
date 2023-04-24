@@ -8,7 +8,7 @@ MAX_ORDER_ID_LEN = 32
 
 # Base URL
 REST_URL = "https://sapi.xt.{}/"
-WSS_URL = "wss://stream.xt.{}:9443/ws/"
+WSS_URL = "wss://stream.xt.{}/public"
 
 PUBLIC_API_VERSION = "v4"
 PRIVATE_API_VERSION = "v4"
@@ -26,10 +26,11 @@ SNAPSHOT_PATH_URL = "/public/depth"
 
 
 # Private API endpoints or BinanceClient function
-ACCOUNTS_PATH_URL = "/user/account"
+ACCOUNTS_PATH_URL = "/balances"
 MY_TRADES_PATH_URL = "/trade"
 WS_HEARTBEAT_TIME_INTERVAL = 30
 ORDER_PATH_URL = "/order"
+ASSETS = "/balances"
 
 #notSupported
 ##BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
@@ -99,13 +100,7 @@ RATE_LIMITS = [
     RateLimit(limit_id=SNAPSHOT_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
               linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 50),
                              LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=BINANCE_USER_STREAM_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
     RateLimit(limit_id=SERVER_TIME_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=PING_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
               linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
                              LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
     RateLimit(limit_id=ACCOUNTS_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,

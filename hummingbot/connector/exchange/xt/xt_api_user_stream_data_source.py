@@ -2,8 +2,8 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, List, Optional
 
-from hummingbot.connector.exchange.binance import binance_constants as CONSTANTS, binance_web_utils as web_utils
-from hummingbot.connector.exchange.binance.binance_auth import BinanceAuth
+from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_web_utils as web_utils
+from hummingbot.connector.exchange.xt.xt_auth import XtAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.utils.async_utils import safe_ensure_future
 from hummingbot.core.web_assistant.connections.data_types import RESTMethod
@@ -12,10 +12,10 @@ from hummingbot.core.web_assistant.ws_assistant import WSAssistant
 from hummingbot.logger import HummingbotLogger
 
 if TYPE_CHECKING:
-    from hummingbot.connector.exchange.binance.binance_exchange import BinanceExchange
+    from hummingbot.connector.exchange.xt.xt_exchange import XtExchange
 
 
-class BinanceAPIUserStreamDataSource(UserStreamTrackerDataSource):
+class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
     LISTEN_KEY_KEEP_ALIVE_INTERVAL = 1800  # Recommended to Ping/Update listen key to keep connection alive
     HEARTBEAT_TIME_INTERVAL = 30.0
@@ -23,19 +23,20 @@ class BinanceAPIUserStreamDataSource(UserStreamTrackerDataSource):
     _logger: Optional[HummingbotLogger] = None
 
     def __init__(self,
-                 auth: BinanceAuth,
+                 auth: XtAuth,
                  trading_pairs: List[str],
-                 connector: 'BinanceExchange',
+                 connector: 'XtExchange',
                  api_factory: WebAssistantsFactory,
                  domain: str = CONSTANTS.DEFAULT_DOMAIN):
         super().__init__()
-        self._auth: BinanceAuth = auth
+        self._auth: XtAuth = auth
         self._current_listen_key = None
         self._domain = domain
         self._api_factory = api_factory
 
         self._listen_key_initialized_event: asyncio.Event = asyncio.Event()
         self._last_listen_key_ping_ts = 0
+
 
     async def _connected_websocket_assistant(self) -> WSAssistant:
         """
@@ -53,7 +54,7 @@ class BinanceAPIUserStreamDataSource(UserStreamTrackerDataSource):
         """
         Subscribes to the trade events and diff orders events through the provided websocket connection.
 
-        Binance does not require any channel subscription.
+        Xt does not require any channel subscription.
 
         :param websocket_assistant: the websocket assistant used to connect to the exchange
         """

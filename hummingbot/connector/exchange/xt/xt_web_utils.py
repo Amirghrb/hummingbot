@@ -31,7 +31,7 @@ def private_rest_url(path_url: str, domain: str = CONSTANTS.DEFAULT_DOMAIN) -> s
 
 def build_api_factory(
         throttler: Optional[AsyncThrottler] = None,
-        time_synchronizer: Optional[TimeSynchronizer] = None,
+        time_synchronizer: Optional[TimeSynchronizer] = TimeSynchronizer(),
         domain: str = CONSTANTS.DEFAULT_DOMAIN,
         time_provider: Optional[Callable] = None,
         auth: Optional[AuthBase] = None, ) -> WebAssistantsFactory:

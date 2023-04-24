@@ -794,10 +794,21 @@ class GateIoRateSourceMode(ExchangeRateSourceModeBase):
     class Config:
         title: str = "gate_io"
 
+class XtRateSourceMode(ExchangeRateSourceModeBase):
+    name: str = Field(
+        default="xt",
+        const=True,
+        client_data=None,
+    )
+
+    class Config:
+        title: str = "xt"
+
 
 RATE_SOURCE_MODES = {
     AscendExRateSourceMode.Config.title: AscendExRateSourceMode,
     BinanceRateSourceMode.Config.title: BinanceRateSourceMode,
+    XtRateSourceMode.Config.title: XtRateSourceMode,
     CoinGeckoRateSourceMode.Config.title: CoinGeckoRateSourceMode,
     KuCoinRateSourceMode.Config.title: KuCoinRateSourceMode,
     GateIoRateSourceMode.Config.title: GateIoRateSourceMode,
@@ -819,7 +830,7 @@ class ClientConfigMap(BaseClientModel):
         ),
     )
     log_level: str = Field(default="INFO")
-    debug_console: bool = Field(default=False)
+    debug_console: bool = Field(default=True)
     strategy_report_interval: float = Field(default=900)
     logger_override_whitelist: List = Field(
         default=["hummingbot.strategy.arbitrage", "hummingbot.strategy.cross_exchange_market_making", "conf"]

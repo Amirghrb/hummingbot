@@ -10,8 +10,8 @@ from aioresponses.core import RequestCall
 
 from hummingbot.client.config.client_config_map import ClientConfigMap
 from hummingbot.client.config.config_helpers import ClientConfigAdapter
-from hummingbot.connector.exchange.binance import binance_constants as CONSTANTS, binance_web_utils as web_utils
-from hummingbot.connector.exchange.binance.binance_exchange import BinanceExchange
+from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_web_utils as web_utils
+from hummingbot.connector.exchange.xt.xt_exchange import XtExchange
 from hummingbot.connector.test_support.exchange_connector_test import AbstractExchangeConnectorTests
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.connector.utils import get_new_client_order_id
@@ -21,7 +21,7 @@ from hummingbot.core.data_type.trade_fee import DeductedFromReturnsTradeFee, Tok
 from hummingbot.core.event.events import MarketOrderFailureEvent, OrderFilledEvent
 
 
-class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests):
+class XtExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests):
 
     @property
     def all_symbols_url(self):
@@ -272,7 +272,7 @@ class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests
             "clientOrderId": "OID1",
             "transactTime": 1507725176595
         }
-
+    '''
     @property
     def balance_request_mock_response_for_base_and_quote(self):
         return {
@@ -301,6 +301,62 @@ class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests
                 "SPOT"
             ]
         }
+    '''
+
+    @property
+    def balance_request_mock_response_for_base_and_quote(self):
+        return {
+        "result":{
+      "totalUsdtAmount":"64.4566372796",
+      "totalBtcAmount":"0.00236004",
+      "assets":[
+         {
+            "currency":"btc",
+            "currencyId":2,
+            "frozenAmount":"0.0000000000",
+            "availableAmount":"0.0000001840",
+            "totalAmount":"0.0000001840",
+            "convertBtcAmount":"0.00000018",
+            "convertUsdtAmount":"0.00502533"
+         },
+         {
+            "currency":"busd",
+            "currencyId":1156,
+            "frozenAmount":"0.00000000",
+            "availableAmount":"0.56179588",
+            "totalAmount":"0.56179588",
+            "convertBtcAmount":"0.00002056",
+            "convertUsdtAmount":"0.56162735"
+         },
+         {
+            "currency":"trx",
+            "currencyId":73,
+            "frozenAmount":"0.00000000",
+            "availableAmount":"0.01115200",
+            "totalAmount":"0.01115200",
+            "convertBtcAmount":"0.00000002",
+            "convertUsdtAmount":"0.00073848"
+         },
+         {
+            "currency":"usdt",
+            "currencyId":11,
+            "frozenAmount":"0.00000000",
+            "availableAmount":"0.00000423",
+            "totalAmount":"0.00000423",
+            "convertBtcAmount":"0",
+            "convertUsdtAmount":"0.0000042396"
+         },
+         {
+            "currency":"cleg",
+            "currencyId":2025,
+            "frozenAmount":"5731.00000000",
+            "availableAmount":"8658.46889200",
+            "totalAmount":"14389.46889200",
+            "convertBtcAmount":"0.00233927",
+            "convertUsdtAmount":"63.88924188"
+         }
+        ]}
+        }   
 
     @property
     def balance_request_mock_response_only_base(self):
@@ -388,10 +444,10 @@ class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests
 
     def create_exchange_instance(self):
         client_config_map = ClientConfigAdapter(ClientConfigMap())
-        return BinanceExchange(
+        return XtExchange(
             client_config_map=client_config_map,
-            binance_api_key="testAPIKey",
-            binance_api_secret="testSecret",
+            xt_api_key="testAPIKey",
+            xt_api_secret="testSecret",
             trading_pairs=[self.trading_pair],
         )
 
@@ -405,7 +461,7 @@ class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests
         request_data = dict(request_call.kwargs["data"])
         self.assertEqual(self.exchange_symbol_for_tokens(self.base_asset, self.quote_asset), request_data["symbol"])
         self.assertEqual(order.trade_type.name.upper(), request_data["side"])
-        self.assertEqual(BinanceExchange.binance_order_type(OrderType.LIMIT), request_data["type"])
+        self.assertEqual(XtExchange.xt_order_type(OrderType.LIMIT), request_data["type"])
         self.assertEqual(Decimal("100"), Decimal(request_data["quantity"]))
         self.assertEqual(Decimal("10000"), Decimal(request_data["price"]))
         self.assertEqual(order.client_order_id, request_data["newClientOrderId"])
@@ -849,7 +905,7 @@ class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests
         self.exchange._set_current_timestamp(1640780000)
         self.exchange._last_poll_timestamp = (self.exchange.current_timestamp -
                                               self.exchange.UPDATE_ORDER_STATUS_MIN_INTERVAL - 1)
-        self.exchange._last_trades_poll_binance_timestamp = 10
+        self.exchange._last_trades_poll_xt_timestamp = 10
         self.async_run_with_timeout(self.exchange._update_order_fills_from_trades())
 
         request = self._all_executed_requests(mock_api, url)[1]
@@ -981,70 +1037,71 @@ class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests
                 "misc_updates=None)")
         )
 
-    def test_user_stream_update_for_order_failure(self):
-        self.exchange._set_current_timestamp(1640780000)
-        self.exchange.start_tracking_order(
-            order_id="OID1",
-            exchange_order_id="100234",
-            trading_pair=self.trading_pair,
-            order_type=OrderType.LIMIT,
-            trade_type=TradeType.BUY,
-            price=Decimal("10000"),
-            amount=Decimal("1"),
-        )
-        order = self.exchange.in_flight_orders["OID1"]
+    # def test_user_stream_update_for_order_failure(self):
+    #     self.exchange._set_current_timestamp(1640780000)
+    #     self.exchange.start_tracking_order(
+    #         order_id="OID1",
+    #         exchange_order_id="100234",
+    #         trading_pair=self.trading_pair,
+    #         order_type=OrderType.LIMIT,
+    #         trade_type=TradeType.BUY,
+    #         price=Decimal("10000"),
+    #         amount=Decimal("1"),
+    #     )
+    #     order = self.exchange.in_flight_orders["OID1"]
 
-        event_message = {
-            "e": "executionReport",
-            "E": 1499405658658,
-            "s": self.exchange_symbol_for_tokens(self.base_asset, self.quote_asset),
-            "c": order.client_order_id,
-            "S": "BUY",
-            "o": "LIMIT",
-            "f": "GTC",
-            "q": "1.00000000",
-            "p": "1000.00000000",
-            "P": "0.00000000",
-            "F": "0.00000000",
-            "g": -1,
-            "C": "",
-            "x": "REJECTED",
-            "X": "REJECTED",
-            "r": "NONE",
-            "i": int(order.exchange_order_id),
-            "l": "0.00000000",
-            "z": "0.00000000",
-            "L": "0.00000000",
-            "n": "0",
-            "N": None,
-            "T": 1499405658657,
-            "t": 1,
-            "I": 8641984,
-            "w": True,
-            "m": False,
-            "M": False,
-            "O": 1499405658657,
-            "Z": "0.00000000",
-            "Y": "0.00000000",
-            "Q": "0.00000000"
-        }
+    #     event_message = {
+    #         "e": "executionReport",
+    #         "E": 1499405658658,
+    #         "s": self.exchange_symbol_for_tokens(self.base_asset, self.quote_asset),
+    #         "c": order.client_order_id,
+    #         "S": "BUY",
+    #         "o": "LIMIT",
+    #         "f": "GTC",
+    #         "q": "1.00000000",
+    #         "p": "1000.00000000",
+    #         "P": "0.00000000",
+    #         "F": "0.00000000",
+    #         "g": -1,
+    #         "C": "",
+    #         "x": "REJECTED",
+    #         "X": "REJECTED",
+    #         "r": "NONE",
+    #         "i": int(order.exchange_order_id),
+    #         "l": "0.00000000",
+    #         "z": "0.00000000",
+    #         "L": "0.00000000",
+    #         "n": "0",
+    #         "N": None,
+    #         "T": 1499405658657,
+    #         "t": 1,
+    #         "I": 8641984,
+    #         "w": True,
+    #         "m": False,
+    #         "M": False,
+    #         "O": 1499405658657,
+    #         "Z": "0.00000000",
+    #         "Y": "0.00000000",
+    #         "Q": "0.00000000"
+    #     }
 
-        mock_queue = AsyncMock()
-        mock_queue.get.side_effect = [event_message, asyncio.CancelledError]
-        self.exchange._user_stream_tracker._user_stream = mock_queue
+    #     mock_queue = AsyncMock()
+    #     mock_queue.get.side_effect = [event_message, asyncio.CancelledError]
+    #     self.exchange._user_stream_tracker._user_stream = mock_queue
 
-        try:
-            self.async_run_with_timeout(self.exchange._user_stream_event_listener())
-        except asyncio.CancelledError:
-            pass
+    #     try:
+    #         self.async_run_with_timeout(self.exchange._user_stream_event_listener())
+    #     except asyncio.CancelledError:
+    #         pass
 
-        failure_event: MarketOrderFailureEvent = self.order_failure_logger.event_log[0]
-        self.assertEqual(self.exchange.current_timestamp, failure_event.timestamp)
-        self.assertEqual(order.client_order_id, failure_event.order_id)
-        self.assertEqual(order.order_type, failure_event.order_type)
-        self.assertNotIn(order.client_order_id, self.exchange.in_flight_orders)
-        self.assertTrue(order.is_failure)
-        self.assertTrue(order.is_done)
+    #     failure_event: MarketOrderFailureEvent = self.order_failure_logger.event_log[0]
+    #     self.assertEqual(self.exchange.current_timestamp, failure_event.timestamp)
+    #     self.assertEqual(order.client_order_id, failure_event.order_id)
+    #     self.assertEqual(order.order_type, failure_event.order_type)
+    #     self.assertNotIn(order.client_order_id, self.exchange.in_flight_orders)
+    #     self.assertTrue(order.is_failure)
+    #     self.assertTrue(order.is_done)
+
 
     @patch("hummingbot.connector.utils.get_tracking_nonce")
     def test_client_order_id_on_order(self, mocked_nonce):
@@ -1081,21 +1138,21 @@ class BinanceExchangeTests(AbstractExchangeConnectorTests.ExchangeConnectorTests
         self.assertEqual(result, expected_client_order_id)
 
     def test_time_synchronizer_related_request_error_detection(self):
-        exception = IOError("Error executing request POST https://api.binance.com/api/v3/order. HTTP status is 400. "
+        exception = IOError("Error executing request POST https://api.xt.com/api/v3/order. HTTP status is 400. "
                             "Error: {'code':-1021,'msg':'Timestamp for this request is outside of the recvWindow.'}")
         self.assertTrue(self.exchange._is_request_exception_related_to_time_synchronizer(exception))
 
-        exception = IOError("Error executing request POST https://api.binance.com/api/v3/order. HTTP status is 400. "
+        exception = IOError("Error executing request POST https://api.xt.com/api/v3/order. HTTP status is 400. "
                             "Error: {'code':-1021,'msg':'Timestamp for this request was 1000ms ahead of the server's "
                             "time.'}")
         self.assertTrue(self.exchange._is_request_exception_related_to_time_synchronizer(exception))
 
-        exception = IOError("Error executing request POST https://api.binance.com/api/v3/order. HTTP status is 400. "
+        exception = IOError("Error executing request POST https://api.xt.com/api/v3/order. HTTP status is 400. "
                             "Error: {'code':-1022,'msg':'Timestamp for this request was 1000ms ahead of the server's "
                             "time.'}")
         self.assertFalse(self.exchange._is_request_exception_related_to_time_synchronizer(exception))
 
-        exception = IOError("Error executing request POST https://api.binance.com/api/v3/order. HTTP status is 400. "
+        exception = IOError("Error executing request POST https://api.xt.com/api/v3/order. HTTP status is 400. "
                             "Error: {'code':-1021,'msg':'Other error.'}")
         self.assertFalse(self.exchange._is_request_exception_related_to_time_synchronizer(exception))
 

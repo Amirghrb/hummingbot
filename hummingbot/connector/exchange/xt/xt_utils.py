@@ -7,7 +7,7 @@ from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, C
 from hummingbot.core.data_type.trade_fee import TradeFeeSchema
 
 CENTRALIZED = True
-EXAMPLE_PAIR = "ETH-USDT"
+EXAMPLE_PAIR = "eth_usdt"
 
 DEFAULT_FEES = TradeFeeSchema(
     maker_percent_fee_decimal=Decimal("0.002"),
@@ -52,8 +52,11 @@ class XtConfigMap(BaseConnectorConfigMap):
     class Config:
         title = "xt"
 
+KEYS = XtConfigMap.construct()
+
+
+
 ### if you need to add another domain appkey and secret use this 
-    # KEYS = XtConfigMap.construct()
 
     # OTHER_DOMAINS = ["xt_us"]
     # OTHER_DOMAINS_PARAMETER = {"xt_us": "us"}

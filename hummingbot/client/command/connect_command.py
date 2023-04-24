@@ -38,7 +38,14 @@ class ConnectCommand:
         self.app.hide_input = True
         if connector_name == "kraken":
             self.notify("Reminder: Please ensure your Kraken API Key Nonce Window is at least 10.")
+        # if connector_name == "xt":
+        #     self.notify("using xt ...")
         connector_config = ClientConfigAdapter(AllConnectorSettings.get_connector_config_keys(connector_name))
+        # connector_config = AllConnectorSettings.get_connector_config_keys(connector_name)
+
+        # self.notify(f"\n {AllConnectorSettings.get_connector_config_keys(connector_config)['xt']}\n")
+        # self.notify(f"\n {AllConnectorSettings.get_connector_config_keys(connector_config)['binance']}\n")
+        
         if Security.connector_config_file_exists(connector_name):
             await Security.wait_til_decryption_done()
             api_key_config = [
@@ -88,7 +95,7 @@ class ConnectCommand:
                 UserBalances.instance().update_exchanges(self.client_config_map, reconnect=True), network_timeout
             )
         except asyncio.TimeoutError:
-            self.notify("\nA network error prevented the connection table to populate. See logs for more details.")
+            self.notify("\nA network error prevented the connection table to populate. See logs for more details.11")
             raise
         for option in sorted(OPTIONS):
             keys_added = "No"
