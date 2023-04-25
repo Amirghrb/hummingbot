@@ -8,7 +8,8 @@ MAX_ORDER_ID_LEN = 32
 
 # Base URL
 REST_URL = "https://sapi.xt.{}/"
-WSS_URL = "wss://stream.xt.{}/public"
+WSS_URL_PUBLIC = "wss://stream.xt.{}/public"
+WSS_URL_PRIVATE = "wss://stream.xt.{}private"
 
 PUBLIC_API_VERSION = "v4"
 PRIVATE_API_VERSION = "v4"
@@ -33,8 +34,8 @@ ORDER_PATH_URL = "/order"
 ASSETS = "/balances"
 
 #notSupported
-##BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
-
+#BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
+WS_TOCKEN="/ws-token"
 
 
 # XT params
@@ -108,6 +109,9 @@ RATE_LIMITS = [
                              LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
     RateLimit(limit_id=MY_TRADES_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
               linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 10),
+                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
+    RateLimit(limit_id=WS_TOCKEN, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
+              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
                              LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
     RateLimit(limit_id=ORDER_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
               linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 2),

@@ -1,5 +1,6 @@
 import asyncio
 from decimal import Decimal
+from math import pow
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from bidict import bidict
@@ -94,8 +95,8 @@ class XtExchange(ExchangePyBase):
         return CONSTANTS.EXCHANGE_INFO_PATH_URL
 
     @property
-    # def check_network_request_path(self):
-    #     return CONSTANTS.PING_PATH_URL
+    def check_network_request_path(self):
+        return CONSTANTS.SERVER_TIME_PATH_URL
 
     @property
     def trading_pairs(self):
@@ -173,6 +174,7 @@ class XtExchange(ExchangePyBase):
                            trade_type: TradeType,
                            order_type: OrderType,
                            price: Decimal,
+                           bizType:str="SPOT",
                            **kwargs) -> Tuple[str, float]:
         order_result = None
         amount_str = f"{amount:f}"
@@ -184,8 +186,10 @@ class XtExchange(ExchangePyBase):
                       "side": side_str,
                       "quantity": amount_str,
                       "type": type_str,
-                      "newClientOrderId": order_id,
-                      "price": price_str}
+                      "ClientOrderId": order_id,
+                      "price": price_str,
+                      "bizType":bizType
+                      }
         if order_type == OrderType.LIMIT:
             api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
 
@@ -210,8 +214,7 @@ class XtExchange(ExchangePyBase):
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         api_params = {
-            "symbol": symbol,
-            "origClientOrderId": order_id,
+            "OrderId": order_id,
         }
         cancel_result = await self._api_delete(
             path_url=CONSTANTS.ORDER_PATH_URL,
@@ -246,21 +249,59 @@ class XtExchange(ExchangePyBase):
                 }
             ]
         }
+
+
+
+                "filters": [                       
+          {
+            "filter": "PROTECTION_LIMIT",
+            "buyMaxDeviation": "0.8"
+            "sellMaxDeviation": "0.8"
+          },
+          {
+            "filter": "PROTECTION_MARKET",
+            "maxDeviation": "0.1"
+          },
+          {
+            "filter": "PROTECTION_ONLINE",
+            "durationSeconds": "300",
+            "maxPriceMultiple": "5"
+          },
+          {
+            "filter": "PRICE",
+            "min": null,
+            "max": null,
+            "tickSize": null
+          },
+          {
+            "filter": "QUANTITY",
+            "min": null,
+            "max": null,
+            "tickSize": null
+          },
+          {
+            "filter": "QUOTE_QTY",
+            "min": null
+          },
+       ]
+      }
+    ]
         """
-        trading_pair_rules = exchange_info_dict.get("symbols", [])
+        trading_pair_rules = exchange_info_dict.get("result", {})
+        trading_pair_rules = trading_pair_rules.get("symbols")
         retval = []
         for rule in filter(xt_utils.is_exchange_information_valid, trading_pair_rules):
             try:
                 trading_pair = await self.trading_pair_associated_to_exchange_symbol(symbol=rule.get("symbol"))
                 filters = rule.get("filters")
-                price_filter = [f for f in filters if f.get("filterType") == "PRICE_FILTER"][0]
-                lot_size_filter = [f for f in filters if f.get("filterType") == "LOT_SIZE"][0]
-                min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
+                price_filter = [f for f in filters if f.get("filter") == "PRICE"][0]
+                lot_size_filter = [f for f in filters if f.get("filter") == "QUANTITY"][0]
+                min_notional_filter = [f for f in filters if f.get("filter") == "PROTECTION_MARKET"][0]
 
-                min_order_size = Decimal(lot_size_filter.get("minQty"))
+                min_order_size = Decimal(lot_size_filter.get("min"))
                 tick_size = price_filter.get("tickSize")
-                step_size = Decimal(lot_size_filter.get("stepSize"))
-                min_notional = Decimal(min_notional_filter.get("minNotional"))
+                step_size = Decimal(lot_size_filter.get("tickSize"))
+                min_notional = Decimal(pow(10,-rule.quoteCurrencyPrecision))
 
                 retval.append(
                     TradingRule(trading_pair,
@@ -529,9 +570,10 @@ class XtExchange(ExchangePyBase):
 
     def _initialize_trading_pair_symbols_from_exchange_info(self, exchange_info: Dict[str, Any]):
         mapping = bidict()
+        exchange_info=exchange_info.get("result")
         for symbol_data in filter(xt_utils.is_exchange_information_valid, exchange_info["symbols"]):
-            mapping[symbol_data["symbol"]] = combine_to_hb_trading_pair(base=symbol_data["baseAsset"],
-                                                                        quote=symbol_data["quoteAsset"])
+            mapping[symbol_data["symbol"]] = combine_to_hb_trading_pair(base=symbol_data["baseCurrency"],
+                                                                        quote=symbol_data["quoteCurrency"])
         self._set_trading_pair_symbol_map(mapping)
 
     async def _get_last_traded_price(self, trading_pair: str) -> float:

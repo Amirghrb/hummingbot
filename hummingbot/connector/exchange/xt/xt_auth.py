@@ -39,12 +39,19 @@ class XtAuth(AuthBase):
 
         return request
 
+
+
     async def ws_authenticate(self, request: WSRequest) -> WSRequest:
+        
         """
         This method is intended to configure a websocket request to be authenticated. Xt does not use this
         functionality
         """
         return request  # pass-through
+    
+
+
+
 #not useed, params dosen't need signature
     '''
     def add_auth_to_params(self,request:RESTRequest):
