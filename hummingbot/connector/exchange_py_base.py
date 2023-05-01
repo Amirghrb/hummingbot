@@ -221,7 +221,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         :param price: the starting point price
         """
         trading_rule = self._trading_rules[trading_pair]
-        return Decimal(trading_rule.min_price_increment)
+        return Decimal(trading_rule.min_price_increment) if trading_rule.min_price_increment!=None else Decimal("0.00001")
 
     def get_order_size_quantum(self, trading_pair: str, order_size: Decimal) -> Decimal:
         """
@@ -886,6 +886,9 @@ class ExchangePyBase(ExchangeBase, ABC):
         self._initialize_trading_pair_symbols_from_exchange_info(exchange_info=exchange_info)
 
     async def _api_get(self, *args, **kwargs):
+        for arg in args:
+            self.logger().info(f"in get {arg}\n")
+        
         kwargs["method"] = RESTMethod.GET
         return await self._api_request(*args, **kwargs)
 

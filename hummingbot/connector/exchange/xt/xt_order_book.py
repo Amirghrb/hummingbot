@@ -2,10 +2,7 @@ from typing import Dict, Optional
 
 from hummingbot.core.data_type.common import TradeType
 from hummingbot.core.data_type.order_book import OrderBook
-from hummingbot.core.data_type.order_book_message import (
-    OrderBookMessage,
-    OrderBookMessageType
-)
+from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 
 
 class XtOrderBook(OrderBook):
@@ -22,10 +19,9 @@ class XtOrderBook(OrderBook):
         :param metadata: a dictionary with extra information to add to the snapshot data
         :return: a snapshot message with the snapshot information received from the exchange
         """
-        if metadata:
+        if metadata and msg!=None:
             msg.update(metadata)
         return OrderBookMessage(OrderBookMessageType.SNAPSHOT, {
-            "trading_pair": msg["trading_pair"],
             "update_id": msg["lastUpdateId"],
             "bids": msg["bids"],
             "asks": msg["asks"]
@@ -63,12 +59,13 @@ class XtOrderBook(OrderBook):
         """
         if metadata:
             msg.update(metadata)
-        ts = msg["E"]
-        return OrderBookMessage(OrderBookMessageType.TRADE, {
-            "trading_pair": msg["trading_pair"],
-            "trade_type": float(TradeType.SELL.value) if msg["m"] else float(TradeType.BUY.value),
-            "trade_id": msg["t"],
+        ts = msg["t"]
+        return  OrderBookMessage(OrderBookMessageType.TRADE, {
+            "trading_pair": msg["s"],
+            "trade_id": msg["i"],
             "update_id": ts,
             "price": msg["p"],
             "amount": msg["q"]
         }, timestamp=ts * 1e-3)
+
+        

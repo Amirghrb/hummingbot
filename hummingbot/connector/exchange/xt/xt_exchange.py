@@ -31,7 +31,7 @@ class XtExchange(ExchangePyBase):
     UPDATE_ORDER_STATUS_MIN_INTERVAL = 10.0
 
     web_utils = web_utils
-
+   
     def __init__(self,
                  client_config_map: "ClientConfigAdapter",
                  xt_api_key: str,
@@ -111,14 +111,17 @@ class XtExchange(ExchangePyBase):
         return self._trading_required
 
     def supported_order_types(self):
+        self.logger().info("in xt supported_order_types")
         return [OrderType.LIMIT, OrderType.LIMIT_MAKER]
 
     async def get_all_pairs_prices(self) -> List[Dict[str, str]]:
+        self.logger().info("in xt get_all_pairs_prices")
         pairs_prices = await self._api_get(path_url=CONSTANTS.TICKER_BOOK_PATH_URL)
         return pairs_prices
 
     def _is_request_exception_related_to_time_synchronizer(self, request_exception: Exception):
         error_description = str(request_exception)
+        self.logger().info("in xt _is_request_exception_related_to_time_synchronizer ")
         is_time_synchronizer_related = ("-1021" in error_description
                                         and "Timestamp for this request" in error_description)
         return is_time_synchronizer_related
@@ -134,6 +137,7 @@ class XtExchange(ExchangePyBase):
         ) and CONSTANTS.UNKNOWN_ORDER_MESSAGE in str(cancelation_exception)
 
     def _create_web_assistants_factory(self) -> WebAssistantsFactory:
+        self.logger().info("in xt _create_web_assistants_factory")
         return web_utils.build_api_factory(
             throttler=self._throttler,
             time_synchronizer=self._time_synchronizer,
@@ -141,6 +145,7 @@ class XtExchange(ExchangePyBase):
             auth=self._auth)
 
     def _create_order_book_data_source(self) -> OrderBookTrackerDataSource:
+        self.logger().info("in xt orderbook")
         return XtAPIOrderBookDataSource(
             trading_pairs=self._trading_pairs,
             connector=self,
@@ -148,6 +153,7 @@ class XtExchange(ExchangePyBase):
             api_factory=self._web_assistants_factory)
 
     def _create_user_stream_data_source(self) -> UserStreamTrackerDataSource:
+        self.logger().info("in xt  _create_user_stream_data_source")        
         return XtAPIUserStreamDataSource(
             auth=self._auth,
             trading_pairs=self._trading_pairs,
@@ -164,6 +170,7 @@ class XtExchange(ExchangePyBase):
                  amount: Decimal,
                  price: Decimal = s_decimal_NaN,
                  is_maker: Optional[bool] = None) -> TradeFeeBase:
+        self.logger().info(f"_get_fee")
         is_maker = order_type is OrderType.LIMIT_MAKER
         return DeductedFromReturnsTradeFee(percent=self.estimate_fee_pct(is_maker))
 
@@ -176,6 +183,8 @@ class XtExchange(ExchangePyBase):
                            price: Decimal,
                            bizType:str="SPOT",
                            **kwargs) -> Tuple[str, float]:
+        self.logger().info(f"_place_order")
+
         order_result = None
         amount_str = f"{amount:f}"
         price_str = f"{price:f}"
@@ -291,30 +300,37 @@ class XtExchange(ExchangePyBase):
         trading_pair_rules = trading_pair_rules.get("symbols")
         retval = []
         for rule in filter(xt_utils.is_exchange_information_valid, trading_pair_rules):
-            try:
                 trading_pair = await self.trading_pair_associated_to_exchange_symbol(symbol=rule.get("symbol"))
                 filters = rule.get("filters")
-                price_filter = [f for f in filters if f.get("filter") == "PRICE"][0]
-                lot_size_filter = [f for f in filters if f.get("filter") == "QUANTITY"][0]
-                min_notional_filter = [f for f in filters if f.get("filter") == "PROTECTION_MARKET"][0]
+                min_notional_filter={}
+                lot_size_filter={}
+                price_filter={}
+                for f in filters:
+                    if(f.get('filter')=='QUOTE_QTY'):
+                        min_notional_filter = f 
+                    elif(f.get('filter')=='PRICE'):
+                        price_filter = f
+                    elif(f.get('filter')=='QUANTITY'):    
+                        lot_size_filter = f
+                        # self.logger().info(f"\n\n in xt _format_trading_rules {f} \n ____\n ")
 
-                min_order_size = Decimal(lot_size_filter.get("min"))
-                tick_size = price_filter.get("tickSize")
-                step_size = Decimal(lot_size_filter.get("tickSize"))
-                min_notional = Decimal(pow(10,-rule.quoteCurrencyPrecision))
+                min_order_size = Decimal(lot_size_filter.get("min"))    if lot_size_filter.get("min")!= None else None
+                step_size = Decimal(lot_size_filter.get("tickSize"))    if lot_size_filter.get("tickSize")!= None else None
+                min_notional = Decimal(min_notional_filter.get("min"))  if min_notional_filter.get("min")!= None else None
+                tick_size = Decimal(price_filter.get("tickSize")) if  price_filter.get("tickSize")!= None else None
 
+                # self.logger().info(f"\n\n in xt _format_trading_rules {min_order_size}\n {tick_size}\n {step_size} \n {min_notional}\n ___")
                 retval.append(
                     TradingRule(trading_pair,
                                 min_order_size=min_order_size,
-                                min_price_increment=Decimal(tick_size),
-                                min_base_amount_increment=Decimal(step_size),
-                                min_notional_size=Decimal(min_notional)))
+                                min_price_increment=tick_size,
+                                min_base_amount_increment=step_size,
+                                min_notional_size=min_notional))
 
-            except Exception:
-                self.logger().exception(f"Error parsing the trading pair rule {rule}. Skipping.")
         return retval
 
     async def _status_polling_loop_fetch_updates(self):
+        self.logger().info(f"_status_polling_loop_fetch_updates")
         await self._update_order_fills_from_trades()
         await super()._status_polling_loop_fetch_updates()
 
@@ -330,7 +346,9 @@ class XtExchange(ExchangePyBase):
         stream data source. It keeps reading events from the queue until the task is interrupted.
         The events received are balance updates, order updates and trade events.
         """
+
         async for event_message in self._iter_user_event_queue():
+            self.logger().info(f"_user_stream_event_listener{event_message}")
             try:
                 event_type = event_message.get("e")
                 # Refer to https://github.com/xt-exchange/xt-official-api-docs/blob/master/user-data-stream.md
@@ -391,6 +409,7 @@ class XtExchange(ExchangePyBase):
                 await self._sleep(5.0)
 
     async def _update_order_fills_from_trades(self):
+        pass
         """
         This is intended to be a backup measure to get filled events with trade ID for orders,
         in case Xt's user stream events are not working.
@@ -425,19 +444,22 @@ class XtExchange(ExchangePyBase):
                     params=params,
                     is_auth_required=True))
 
-            self.logger().debug(f"Polling for order fills of {len(tasks)} trading pairs.")
             results = await safe_gather(*tasks, return_exceptions=True)
+            # self.logger().info(f"at _update_order_fills_from_trades : res \n {results} \n\n")
+            results = results[0].get("result")
+            # self.logger().info(f"at _update_order_fills_from_trades : res2 \n {results} \n\n")
+            results = results["items"]           
+            # self.logger().info(f"at _update_order_fills_from_trades : res3 \n {results} \n\n")
 
-            for trades, trading_pair in zip(results, trading_pairs):
-
-                if isinstance(trades, Exception):
-                    self.logger().network(
-                        f"Error fetching trades update for the order {trading_pair}: {trades}.",
-                        app_warning_msg=f"Failed to fetch trade update for {trading_pair}."
-                    )
-                    continue
-                for trade in trades:
-                    exchange_order_id = str(trade["orderId"])
+            for trade,trading_pair in zip(results,trading_pair):
+                    if isinstance(trade, Exception):
+                        self.logger().network(
+                            f"Error fetching trades update for the order {trading_pair}: {trade}.",
+                            app_warning_msg=f"Failed to fetch trade update for {trading_pair}."
+                        )
+                        continue
+                    self.logger().info(f"at _update_order_fills_from_trades : res3 \n {trade} , {trading_pair}\n\n")
+                    exchange_order_id = trade["orderId"]
                     if exchange_order_id in order_by_exchange_id_map:
                         # This is a fill for a tracked order
                         tracked_order = order_by_exchange_id_map[exchange_order_id]
@@ -445,10 +467,10 @@ class XtExchange(ExchangePyBase):
                             fee_schema=self.trade_fee_schema(),
                             trade_type=tracked_order.trade_type,
                             percent_token=trade["commissionAsset"],
-                            flat_fees=[TokenAmount(amount=Decimal(trade["commission"]), token=trade["commissionAsset"])]
+                            flat_fees=[TokenAmount(amount=Decimal(trade["fee"]), token=trade["feeCurrency"])]
                         )
                         trade_update = TradeUpdate(
-                            trade_id=str(trade["id"]),
+                            trade_id=str(trade['tradeId']),
                             client_order_id=tracked_order.client_order_id,
                             exchange_order_id=exchange_order_id,
                             trading_pair=trading_pair,
@@ -459,11 +481,11 @@ class XtExchange(ExchangePyBase):
                             fill_timestamp=trade["time"] * 1e-3,
                         )
                         self._order_tracker.process_trade_update(trade_update)
-                    elif self.is_confirmed_new_order_filled_event(str(trade["id"]), exchange_order_id, trading_pair):
+                    elif self.is_confirmed_new_order_filled_event(str(trade["tradeId"]), exchange_order_id, trading_pair):
                         # This is a fill of an order registered in the DB but not tracked any more
                         self._current_trade_fills.add(TradeFillOrderDetails(
                             market=self.display_name,
-                            exchange_trade_id=str(trade["id"]),
+                            exchange_trade_id=str(trade["tradeId"]),
                             symbol=trading_pair))
                         self.trigger_event(
                             MarketEvent.OrderFilled,
@@ -471,19 +493,19 @@ class XtExchange(ExchangePyBase):
                                 timestamp=float(trade["time"]) * 1e-3,
                                 order_id=self._exchange_order_ids.get(str(trade["orderId"]), None),
                                 trading_pair=trading_pair,
-                                trade_type=TradeType.BUY if trade["isBuyer"] else TradeType.SELL,
-                                order_type=OrderType.LIMIT_MAKER if trade["isMaker"] else OrderType.LIMIT,
+                                trade_type=TradeType.BUY if trade["orderSide"]=="BUY" else TradeType.SELL,
+                                order_type=OrderType.LIMIT_MAKER if trade['takerMaker']=="MAKER" else OrderType.LIMIT,
                                 price=Decimal(trade["price"]),
-                                amount=Decimal(trade["qty"]),
+                                amount=Decimal(trade["quantity"]),
                                 trade_fee=DeductedFromReturnsTradeFee(
                                     flat_fees=[
                                         TokenAmount(
-                                            trade["commissionAsset"],
-                                            Decimal(trade["commission"])
+                                            trade["feeCurrency"],
+                                            Decimal(trade["fee"])
                                         )
                                     ]
                                 ),
-                                exchange_trade_id=str(trade["id"])
+                                exchange_trade_id=str(trade["tradeId"])
                             ))
                         self.logger().info(f"Recreating missing trade in TradeFill: {trade}")
 
@@ -526,13 +548,15 @@ class XtExchange(ExchangePyBase):
         return trade_updates
 
     async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:
+        self.logger().info(f"_request_order_status")
         trading_pair = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         updated_order_data = await self._api_get(
             path_url=CONSTANTS.ORDER_PATH_URL,
             params={
-                "symbol": trading_pair,
-                "origClientOrderId": tracked_order.client_order_id},
-            is_auth_required=True)
+                "orderId": tracked_order.client_order_id},
+            is_auth_required=True
+            )
+        
 
         new_state = CONSTANTS.ORDER_STATE[updated_order_data["status"]]
 
@@ -556,6 +580,7 @@ class XtExchange(ExchangePyBase):
 
         balances = account_info["result"]["assets"]
         for balance_entry in balances:
+            self.logger().info(f'\n\n in xt _update_balances { balance_entry["currency"]} \n { balance_entry["availableAmount"]} \n { balance_entry["totalAmount"]}')        
             asset_name = balance_entry["currency"]
             free_balance = Decimal(balance_entry["availableAmount"])
             total_balance = Decimal(balance_entry["totalAmount"])
@@ -574,6 +599,8 @@ class XtExchange(ExchangePyBase):
         for symbol_data in filter(xt_utils.is_exchange_information_valid, exchange_info["symbols"]):
             mapping[symbol_data["symbol"]] = combine_to_hb_trading_pair(base=symbol_data["baseCurrency"],
                                                                         quote=symbol_data["quoteCurrency"])
+        
+        self.logger().info(f"in xt _initialize_trading_pair_symbols_from_exchange_info \n\n  \n\n ________________ ")
         self._set_trading_pair_symbol_map(mapping)
 
     async def _get_last_traded_price(self, trading_pair: str) -> float:
@@ -586,5 +613,6 @@ class XtExchange(ExchangePyBase):
             path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL,
             params=params
         )
-
-        return float(resp_json["lastPrice"])
+        resp_json= resp_json.get("result")[0]
+        self.logger().info(f'in xt _get_last_traded_price {float(resp_json["p"])}')
+        return float(resp_json["p"])

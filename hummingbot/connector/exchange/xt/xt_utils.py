@@ -25,7 +25,7 @@ def is_exchange_information_valid(symbol_info: Dict[str, Any]) -> bool:
     state=symbol_info.get("state", None)
     trading=symbol_info.get("tradingEnabled", None)
     openApi=symbol_info.get("openapiEnabled", None)
-    return  state == "ONLINE" and trading == True and openApi==True
+    return  state == "ONLINE" and trading == True 
 
 
 class XtConfigMap(BaseConnectorConfigMap):

@@ -9,7 +9,7 @@ MAX_ORDER_ID_LEN = 32
 # Base URL
 REST_URL = "https://sapi.xt.{}/"
 WSS_URL_PUBLIC = "wss://stream.xt.{}/public"
-WSS_URL_PRIVATE = "wss://stream.xt.{}private"
+WSS_URL_PRIVATE = "wss://stream.xt.{}/private"
 
 PUBLIC_API_VERSION = "v4"
 PRIVATE_API_VERSION = "v4"
@@ -20,7 +20,8 @@ PRIVATE_API_VERSION = "v4"
 ##PING_PATH_URL = "/ping"
 
 EXCHANGE_INFO_PATH_URL = "/public/symbol"
-TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/24h"
+TICKER_PRICE_CHANGE_24h = "/public/ticker/24h"
+TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/price"
 TICKER_BOOK_PATH_URL = "/public/ticker/book"
 SERVER_TIME_PATH_URL = "/public/time"
 SNAPSHOT_PATH_URL = "/public/depth"

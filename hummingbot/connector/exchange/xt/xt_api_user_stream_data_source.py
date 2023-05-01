@@ -6,7 +6,7 @@ from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_web_u
 from hummingbot.connector.exchange.xt.xt_auth import XtAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.utils.async_utils import safe_ensure_future
-from hummingbot.core.web_assistant.connections.data_types import RESTMethod
+from hummingbot.core.web_assistant.connections.data_types import RESTMethod, RESTRequest
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.core.web_assistant.ws_assistant import WSAssistant
 from hummingbot.logger import HummingbotLogger
@@ -46,7 +46,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         await self._listen_key_initialized_event.wait()
 
         ws: WSAssistant = await self._get_ws_assistant()
-        url = f"{CONSTANTS.WSS_URL.format(self._domain)}/{self._current_listen_key}"
+        url = f"{CONSTANTS.WSS_URL_PRIVATE.format(self._domain)}"
         await ws.connect(ws_url=url, ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
         return ws
 
@@ -61,22 +61,35 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         pass
 
     async def _get_listen_key(self):
+        request=RESTRequest(
+            url=CONSTANTS.REST_URL.format(CONSTANTS.DEFAULT_DOMAIN)+CONSTANTS.PRIVATE_API_VERSION+CONSTANTS.WS_TOCKEN,
+            method=RESTMethod.POST,
+            is_auth_required= True,
+            endpoint_url="/"+CONSTANTS.PRIVATE_API_VERSION+CONSTANTS.WS_TOCKEN
+                            )
         rest_assistant = await self._api_factory.get_rest_assistant()
         try:
             data = await rest_assistant.execute_request(
                 url=web_utils.public_rest_url(path_url=CONSTANTS.WS_TOCKEN, domain=self._domain),
                 method=RESTMethod.POST,
-                throttler_limit_id=CONSTANTS.XT_USER_STREAM_PATH_URL,
-                headers=self._auth.header_for_authentication()
+                throttler_limit_id=CONSTANTS.WS_TOCKEN,
+                headers=self._auth.header_for_authentication(request)
             )
         except asyncio.CancelledError:
             raise
         except Exception as exception:
             raise IOError(f"Error fetching user stream listen key. Error: {exception}")
-
-        return data["listenKey"]
-
+        data=data.get('result')
+        self.logger().info(data["accessToken"])
+        return data["accessToken"]
+# xt dosent support put and update key so we gnerate a new one in a interval -> L127
     async def _ping_listen_key(self) -> bool:
+        request=RESTRequest(
+            url=CONSTANTS.REST_URL.format(CONSTANTS.DEFAULT_DOMAIN)+CONSTANTS.PRIVATE_API_VERSION+CONSTANTS.WS_TOCKEN,
+            method=RESTMethod.POST,
+            is_auth_required= True,
+            endpoint_url="/"+CONSTANTS.PRIVATE_API_VERSION+CONSTANTS.WS_TOCKEN
+                            )
         rest_assistant = await self._api_factory.get_rest_assistant()
         try:
             data = await rest_assistant.execute_request(
@@ -85,7 +98,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
                 method=RESTMethod.PUT,
                 return_err=True,
                 throttler_limit_id=CONSTANTS.XT_USER_STREAM_PATH_URL,
-                headers=self._auth.header_for_authentication()
+                headers=self._auth.header_for_authentication(request)
             )
 
             if "code" in data:
@@ -111,7 +124,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
                     self._last_listen_key_ping_ts = int(time.time())
 
                 if now - self._last_listen_key_ping_ts >= self.LISTEN_KEY_KEEP_ALIVE_INTERVAL:
-                    success: bool = await self._ping_listen_key()
+                    success: bool =False
                     if not success:
                         self.logger().error("Error occurred renewing listen key ...")
                         break
