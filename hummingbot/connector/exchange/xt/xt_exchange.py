@@ -2,7 +2,7 @@ import asyncio
 from decimal import Decimal
 from math import pow
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
-
+from time import time
 from bidict import bidict
 
 from hummingbot.connector.constants import s_decimal_NaN
@@ -202,13 +202,21 @@ class XtExchange(ExchangePyBase):
         if order_type == OrderType.LIMIT:
             api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
 
+        # self.logger().info(f"in place order S1 : \n {api_params}")
         try:
             order_result = await self._api_post(
                 path_url=CONSTANTS.ORDER_PATH_URL,
                 data=api_params,
                 is_auth_required=True)
-            o_id = str(order_result["orderId"])
-            transact_time = order_result["transactTime"] * 1e-3
+            self.logger().info(f"in place order : \n { order_result}")
+            if(order_result.get("rc")==0):
+                o_id = str(order_result.get("result")["orderId"])
+                transact_time = time()
+            else:
+                msg=order_result.get("mc")
+                self.logger().error(f"API Error : \n {msg}")
+                raise Exception(msg)
+                
         except IOError as e:
             error_description = str(e)
             is_server_overloaded = ("status is 503" in error_description
@@ -223,13 +231,14 @@ class XtExchange(ExchangePyBase):
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         api_params = {
-            "OrderId": order_id,
+            "orderId": order_id,
         }
         cancel_result = await self._api_delete(
             path_url=CONSTANTS.ORDER_PATH_URL,
             params=api_params,
             is_auth_required=True)
-        if cancel_result.get("status") == "CANCELED":
+        self.logger().info(cancel_result)
+        if cancel_result.get("rc") == 0:
             return True
         return False
 
@@ -301,10 +310,13 @@ class XtExchange(ExchangePyBase):
         retval = []
         for rule in filter(xt_utils.is_exchange_information_valid, trading_pair_rules):
                 trading_pair = await self.trading_pair_associated_to_exchange_symbol(symbol=rule.get("symbol"))
+                pricePrecision =rule.get("pricePrecision")
+                quantityPrecision =rule.get("quantityPrecision")
                 filters = rule.get("filters")
                 min_notional_filter={}
                 lot_size_filter={}
                 price_filter={}
+                # self.logger().info(f"\n\n in xt _format_trading_rules {filters} \n ____\n ")
                 for f in filters:
                     if(f.get('filter')=='QUOTE_QTY'):
                         min_notional_filter = f 
@@ -312,12 +324,14 @@ class XtExchange(ExchangePyBase):
                         price_filter = f
                     elif(f.get('filter')=='QUANTITY'):    
                         lot_size_filter = f
-                        # self.logger().info(f"\n\n in xt _format_trading_rules {f} \n ____\n ")
+                # self.logger().info(f"\n\n in xt _format_trading_rules \n {min_notional_filter} \n ____\n ")
+                # self.logger().info(f"\n\n in xt _format_trading_rules \n {price_filter} \n ____\n ")
+                # self.logger().info(f"\n\n in xt _format_trading_rules \n {lot_size_filter} \n ____\n ")
 
-                min_order_size = Decimal(lot_size_filter.get("min"))    if lot_size_filter.get("min")!= None else None
-                step_size = Decimal(lot_size_filter.get("tickSize"))    if lot_size_filter.get("tickSize")!= None else None
-                min_notional = Decimal(min_notional_filter.get("min"))  if min_notional_filter.get("min")!= None else None
-                tick_size = Decimal(price_filter.get("tickSize")) if  price_filter.get("tickSize")!= None else None
+                min_order_size = Decimal(lot_size_filter.get("min"))    if lot_size_filter.get("min")!= None else Decimal("0.0000001")
+                step_size = Decimal(lot_size_filter.get("tickSize"))    if lot_size_filter.get("tickSize")!= None else  Decimal(f"1e-{quantityPrecision}")
+                min_notional = Decimal(min_notional_filter.get("min"))  if min_notional_filter.get("min")!= None else Decimal("0.0000001")
+                tick_size = Decimal(price_filter.get("tickSize"))       if  price_filter.get("tickSize")!= None else Decimal(f"1e-{pricePrecision}")
 
                 # self.logger().info(f"\n\n in xt _format_trading_rules {min_order_size}\n {tick_size}\n {step_size} \n {min_notional}\n ___")
                 retval.append(
@@ -439,17 +453,21 @@ class XtExchange(ExchangePyBase):
                 }
                 if self._last_poll_timestamp > 0:
                     params["startTime"] = query_time
+                    
                 tasks.append(self._api_get(
                     path_url=CONSTANTS.MY_TRADES_PATH_URL,
                     params=params,
                     is_auth_required=True))
 
             results = await safe_gather(*tasks, return_exceptions=True)
-            # self.logger().info(f"at _update_order_fills_from_trades : res \n {results} \n\n")
-            results = results[0].get("result")
-            # self.logger().info(f"at _update_order_fills_from_trades : res2 \n {results} \n\n")
-            results = results["items"]           
-            # self.logger().info(f"at _update_order_fills_from_trades : res3 \n {results} \n\n")
+            self.logger().info(f"at _update_order_fills_from_trades : res \n {results} \n\n")
+            if (results["rc"==0]):
+                results = results[0].get("result")
+                # self.logger().info(f"at _update_order_fills_from_trades : res2 \n {results} \n\n")
+                results = results["items"]           
+                # self.logger().info(f"at _update_order_fills_from_trades : res3 \n {results} \n\n")
+            else:
+                raise AttributeError(results["mc"])
 
             for trade,trading_pair in zip(results,trading_pair):
                     if isinstance(trade, Exception):
@@ -466,7 +484,7 @@ class XtExchange(ExchangePyBase):
                         fee = TradeFeeBase.new_spot_fee(
                             fee_schema=self.trade_fee_schema(),
                             trade_type=tracked_order.trade_type,
-                            percent_token=trade["commissionAsset"],
+                            percent_token=trade["feeCurrency"],
                             flat_fees=[TokenAmount(amount=Decimal(trade["fee"]), token=trade["feeCurrency"])]
                         )
                         trade_update = TradeUpdate(
@@ -475,7 +493,7 @@ class XtExchange(ExchangePyBase):
                             exchange_order_id=exchange_order_id,
                             trading_pair=trading_pair,
                             fee=fee,
-                            fill_base_amount=Decimal(trade["qty"]),
+                            fill_base_amount=Decimal(trade["quantity"]),
                             fill_quote_amount=Decimal(trade["quoteQty"]),
                             fill_price=Decimal(trade["price"]),
                             fill_timestamp=trade["time"] * 1e-3,
@@ -529,8 +547,8 @@ class XtExchange(ExchangePyBase):
                 fee = TradeFeeBase.new_spot_fee(
                     fee_schema=self.trade_fee_schema(),
                     trade_type=order.trade_type,
-                    percent_token=trade["commissionAsset"],
-                    flat_fees=[TokenAmount(amount=Decimal(trade["commission"]), token=trade["commissionAsset"])]
+                    percent_token=trade["fee"],
+                    flat_fees=[TokenAmount(amount=Decimal(trade["fee"]), token=trade["commissionAsset"])]
                 )
                 trade_update = TradeUpdate(
                     trade_id=str(trade["id"]),

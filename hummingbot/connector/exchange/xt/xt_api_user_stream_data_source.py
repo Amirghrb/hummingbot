@@ -80,7 +80,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         except Exception as exception:
             raise IOError(f"Error fetching user stream listen key. Error: {exception}")
         data=data.get('result')
-        self.logger().info(data["accessToken"])
+        # self.logger().info(data["accessToken"])
         return data["accessToken"]
 # xt dosent support put and update key so we gnerate a new one in a interval -> L127
     async def _ping_listen_key(self) -> bool:

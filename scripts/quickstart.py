@@ -9,7 +9,7 @@ from hummingbot.strategy.script_strategy_base import ScriptStrategyBase
 
 
 class QuickStart(ScriptStrategyBase):
-    pair="cleg-usdt"
+    pair="trx-usdt"
     markets ={
         "xt":{pair}
     }

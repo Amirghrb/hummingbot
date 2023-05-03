@@ -70,24 +70,16 @@ class XtAuth(AuthBase):
     '''
     def header_for_authentication(self,request:RESTRequest) -> Dict[str, str]:
         timestamp = int(time.time()*1000)
-        if request.is_auth_required:
-            signature = self._generate_signature(request,timestamp)
-            headers = {
-                    'xt-validate-algorithms': self.hash,
-                    'xt-validate-appkey': self.api_key,
-                    'xt-validate-recvwindow': self.timeWindow,
-                    "xt-validate-timestamp":str(timestamp),
-                    "xt-validate-signature":signature
-                    }
-        else:
-             headers = {
-                    'xt-validate-algorithms': self.hash,
-                    'xt-validate-appkey': self.api_key,
-                    'xt-validate-recvwindow': self.timeWindow,
-                    "xt-validate-timestamp":str(timestamp),
-                    }    
+        signature = self._generate_signature(request,timestamp)
+        headers = {
+                'xt-validate-algorithms': self.hash,
+                'xt-validate-appkey': self.api_key,
+                'xt-validate-recvwindow': self.timeWindow,
+                "xt-validate-timestamp":str(timestamp),
+                "xt-validate-signature":signature
+                }
+        print(f"sign :\n{signature}\n\n header : {headers}")
         return headers
-
     def _generate_signature(self,request:RESTRequest,timestamp) -> str:
         #gnerate first part of message
         xv='xt-validate-algorithms={}&xt-validate-appkey={}&xt-validate-recvwindow={}&xt-validate-timestamp={}'
@@ -108,8 +100,8 @@ class XtAuth(AuthBase):
         # self.logger(xv,"\n",yv,"\n")<- for test
         #generate original message
         original=xv+yv
-        # print(xv,"\n",yv,"\n")#<- for test
-        # print(original,"\n")#<- for test
+        print(xv,"\n\n",yv,"\n\n")#<- for test
+        print(original,"\n\n")#<- for test
         
         signature = hmac.new(bytes(self.secret_key , 'latin-1'), bytes(original , 'latin-1'), digestmod = hashlib.sha256).hexdigest().upper()
 
@@ -129,8 +121,8 @@ class XtAuth(AuthBase):
         params=params
         temp=''
         res=''
-        for param in params:
-            temp=',{}={}'.format(param,params[param])
+        for param in reversed(params):
+            temp='&{}={}'.format(param,params[param])
             res+=temp
         return  res[1:]   
 

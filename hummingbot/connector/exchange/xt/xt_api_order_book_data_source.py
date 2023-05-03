@@ -128,24 +128,31 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     async def _parse_trade_message(self, raw_message: Dict[str, Any], message_queue: asyncio.Queue):
         #self.logger().info(f"_parse_trade_message s: \n {raw_message}") 
-        if(raw_message["topic"]=="trade"):
-            data= raw_message.get("data")
-            if "result" not in raw_message:
-                trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(symbol=data.get("s"))
-                trade_message = XtOrderBook.trade_message_from_exchange(
-                    data , {"trading_pair": trading_pair})
-                message_queue.put_nowait(trade_message)
-            #self.logger().info(f"_parse_trade_message e: \n {trade_message}") 
+        if("topic" in raw_message):
+            if(raw_message["topic"]=="trade"):
+                data= raw_message.get("data")
+                if "result" not in raw_message:
+                    trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(symbol=data.get("s"))
+                    trade_message = XtOrderBook.trade_message_from_exchange(
+                        data , {"trading_pair": trading_pair})
+                    message_queue.put_nowait(trade_message)
+        else:
+                self.logger().info(f"_parse_trade_message e: \n {raw_message}\n\n") 
+
 
     async def _parse_order_book_diff_message(self, raw_message: Dict[str, Any], message_queue: asyncio.Queue):
         data= raw_message.get("data")
-        ## self.logger().info(f"_parse_order_book_message******: \n {data}") 
+        self.logger().info(f"_parse_order_book_message******: \n {data}") 
         if "result" not in raw_message:
-            trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(symbol=data.get("s"))
-            order_book_message: OrderBookMessage = XtOrderBook.diff_message_from_exchange(
-                data, time.time(), {"trading_pair": trading_pair})
-            message_queue.put_nowait(order_book_message)
-        ## self.logger().info(f"_parse_order_book_diff_message******: \n {order_book_message}") 
+            if("topic" in raw_message):
+                if(raw_message["topic"]=="depth_update"):    
+                    trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(symbol=data["s"])
+                    order_book_message: OrderBookMessage = XtOrderBook.diff_message_from_exchange(
+                        data, time.time(), {"trading_pair": trading_pair})
+                    message_queue.put_nowait(order_book_message)
+                ## self.logger().info(f"_parse_order_book_diff_message******: \n {order_book_message}") 
+            else:
+                self.logger().info(f"_parse_order_book_diff_message******: \n {raw_message}\n\n") 
 
     def _channel_originating_message(self, event_message: Dict[str, Any]) -> str:
         channel = ""
