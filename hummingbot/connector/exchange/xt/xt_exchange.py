@@ -112,7 +112,7 @@ class XtExchange(ExchangePyBase):
 
     def supported_order_types(self):
         self.logger().info("in xt supported_order_types")
-        return [OrderType.LIMIT, OrderType.LIMIT_MAKER]
+        return [OrderType.LIMIT]
 
     async def get_all_pairs_prices(self) -> List[Dict[str, str]]:
         self.logger().info("in xt get_all_pairs_prices")
@@ -183,11 +183,15 @@ class XtExchange(ExchangePyBase):
                            price: Decimal,
                            bizType:str="SPOT",
                            **kwargs) -> Tuple[str, float]:
-        self.logger().info(f"_place_order")
+
+
+        self.logger().info(f"_place_order :\n {amount}\n ")
 
         order_result = None
         amount_str = f"{amount:f}"
         price_str = f"{price:f}"
+        self.logger().info(f"_place_order :\n {amount_str}\n ")
+
         type_str = XtExchange.xt_order_type(order_type)
         side_str = CONSTANTS.SIDE_BUY if trade_type is TradeType.BUY else CONSTANTS.SIDE_SELL
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
@@ -202,7 +206,7 @@ class XtExchange(ExchangePyBase):
         if order_type == OrderType.LIMIT:
             api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
 
-        # self.logger().info(f"in place order S1 : \n {api_params}")
+        self.logger().info(f"in place order S1 : \n {api_params}")
         try:
             order_result = await self._api_post(
                 path_url=CONSTANTS.ORDER_PATH_URL,
@@ -231,13 +235,14 @@ class XtExchange(ExchangePyBase):
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         api_params = {
-            "orderId": order_id,
+            "orderId": tracked_order.exchange_order_id,
         }
         cancel_result = await self._api_delete(
             path_url=CONSTANTS.ORDER_PATH_URL,
             params=api_params,
             is_auth_required=True)
-        self.logger().info(cancel_result)
+        self.logger().info(f"cancel_result -> {order_id}")
+        self.logger().info(f"cancel_result -> {cancel_result}")
         if cancel_result.get("rc") == 0:
             return True
         return False
@@ -479,7 +484,7 @@ class XtExchange(ExchangePyBase):
                     self.logger().info(f"at _update_order_fills_from_trades : res3 \n {trade} , {trading_pair}\n\n")
                     exchange_order_id = trade["orderId"]
                     if exchange_order_id in order_by_exchange_id_map:
-                        # This is a fill for a tracked order
+                        # This is a fild for a tracked order
                         tracked_order = order_by_exchange_id_map[exchange_order_id]
                         fee = TradeFeeBase.new_spot_fee(
                             fee_schema=self.trade_fee_schema(),
@@ -537,55 +542,68 @@ class XtExchange(ExchangePyBase):
                 path_url=CONSTANTS.MY_TRADES_PATH_URL,
                 params={
                     "symbol": trading_pair,
-                    "orderId": exchange_order_id
+                    "orderId": exchange_order_id,
+                    "limit":20
                 },
                 is_auth_required=True,
-                limit_id=CONSTANTS.MY_TRADES_PATH_URL)
-
-            for trade in all_fills_response:
-                exchange_order_id = str(trade["orderId"])
-                fee = TradeFeeBase.new_spot_fee(
-                    fee_schema=self.trade_fee_schema(),
-                    trade_type=order.trade_type,
-                    percent_token=trade["fee"],
-                    flat_fees=[TokenAmount(amount=Decimal(trade["fee"]), token=trade["commissionAsset"])]
                 )
-                trade_update = TradeUpdate(
-                    trade_id=str(trade["id"]),
-                    client_order_id=order.client_order_id,
-                    exchange_order_id=exchange_order_id,
-                    trading_pair=trading_pair,
-                    fee=fee,
-                    fill_base_amount=Decimal(trade["qty"]),
-                    fill_quote_amount=Decimal(trade["quoteQty"]),
-                    fill_price=Decimal(trade["price"]),
-                    fill_timestamp=trade["time"] * 1e-3,
-                )
-                trade_updates.append(trade_update)
+            if all_fills_response.get("rc")==0:
+                self.logger().info(f"trade : { all_fills_response}")
+                all_fills_response=all_fills_response.get("result").get("items")
+                self.logger().info(f"trade : { all_fills_response}")
+                if(len(all_fills_response)>0):
+                    for trade in all_fills_response:
+                        exchange_order_id = trade.get("orderId",None)
+                        fee = TradeFeeBase.new_spot_fee(
+                        fee_schema=self.trade_fee_schema(),
+                        trade_type=order.trade_type,
+                        percent_token=trade["fee"],
+                        flat_fees=[TokenAmount(amount=Decimal(trade["fee"]), token=trade["feeCurrency"])]
+                        )
+                        trade_update = TradeUpdate(
+                            trade_id=str(trade["orderId"]),
+                            client_order_id=order.client_order_id,
+                            exchange_order_id=exchange_order_id,
+                            trading_pair=trading_pair,
+                            fee=fee,
+                            fill_base_amount=Decimal(trade["quantity"]),
+                            fill_quote_amount=Decimal(trade["quoteQty"]),
+                            fill_price=Decimal(trade["price"]),
+                            fill_timestamp=trade["time"] * 1e-3,
+                        )
+                        trade_updates.append(trade_update)
+                    return trade_updates
+                else:
+                    return []   
+            else:
+                self.logger().error(f"Network Error {all_fills_response.get('msg')}", exc_info=True)
+                raise 
 
-        return trade_updates
 
     async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:
         self.logger().info(f"_request_order_status")
         trading_pair = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
+       
         updated_order_data = await self._api_get(
             path_url=CONSTANTS.ORDER_PATH_URL,
             params={
-                "orderId": tracked_order.client_order_id},
+                "orderId": tracked_order.exchange_order_id},
             is_auth_required=True
             )
-        
+        updated_order_data= updated_order_data.get("result")
+        self.logger().error(f"_request_order_status {updated_order_data} ")
 
         new_state = CONSTANTS.ORDER_STATE[updated_order_data["status"]]
 
         order_update = OrderUpdate(
             client_order_id=tracked_order.client_order_id,
-            exchange_order_id=str(updated_order_data["orderId"]),
+            exchange_order_id=updated_order_data["orderId"],
             trading_pair=tracked_order.trading_pair,
             update_timestamp=updated_order_data["updateTime"] * 1e-3,
             new_state=new_state,
         )
 
+        self.logger().error(f"_request_order_status L3 {order_update} ")
         return order_update
 
     async def _update_balances(self):
