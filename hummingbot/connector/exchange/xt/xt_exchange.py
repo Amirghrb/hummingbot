@@ -170,7 +170,7 @@ class XtExchange(ExchangePyBase):
                  amount: Decimal,
                  price: Decimal = s_decimal_NaN,
                  is_maker: Optional[bool] = None) -> TradeFeeBase:
-        self.logger().info(f"_get_fee")
+        # self.logger().info(f"_get_fee")
         is_maker = order_type is OrderType.LIMIT_MAKER
         return DeductedFromReturnsTradeFee(percent=self.estimate_fee_pct(is_maker))
 
@@ -591,15 +591,15 @@ class XtExchange(ExchangePyBase):
             is_auth_required=True
             )
         updated_order_data= updated_order_data.get("result")
-        self.logger().error(f"_request_order_status {updated_order_data} ")
+        self.logger().info(f"_request_order_status {updated_order_data} ")
 
-        new_state = CONSTANTS.ORDER_STATE[updated_order_data["status"]]
+        new_state = CONSTANTS.ORDER_STATE[updated_order_data["state"]]
 
         order_update = OrderUpdate(
             client_order_id=tracked_order.client_order_id,
             exchange_order_id=updated_order_data["orderId"],
             trading_pair=tracked_order.trading_pair,
-            update_timestamp=updated_order_data["updateTime"] * 1e-3,
+            update_timestamp=updated_order_data["updatedTime"] * 1e-3,
             new_state=new_state,
         )
 
