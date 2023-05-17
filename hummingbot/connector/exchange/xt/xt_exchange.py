@@ -428,7 +428,6 @@ class XtExchange(ExchangePyBase):
                 await self._sleep(5.0)
 
     async def _update_order_fills_from_trades(self):
-        pass
         """
         This is intended to be a backup measure to get filled events with trade ID for orders,
         in case Xt's user stream events are not working.
@@ -444,7 +443,7 @@ class XtExchange(ExchangePyBase):
 
         if (long_interval_current_tick > long_interval_last_tick
                 or (self.in_flight_orders and small_interval_current_tick > small_interval_last_tick)):
-            query_time = int(self._last_trades_poll_xt_timestamp * 1e3)
+            query_time = int((self._last_trades_poll_xt_timestamp-10000)* 1e3)
             self._last_trades_poll_xt_timestamp = self._time_synchronizer.time()
             order_by_exchange_id_map = {}
             for order in self._order_tracker.all_fillable_orders.values():
@@ -453,6 +452,7 @@ class XtExchange(ExchangePyBase):
             tasks = []
             trading_pairs = self.trading_pairs
             for trading_pair in trading_pairs:
+                self.logger().info(f"at _update_order_fills_from_trades : res \n {trading_pair} , {query_time} \n\n")
                 params = {
                     "symbol": await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
                 }
@@ -468,20 +468,20 @@ class XtExchange(ExchangePyBase):
             self.logger().info(f"at _update_order_fills_from_trades : res \n {results} \n\n")
             if (results["rc"==0]):
                 results = results[0].get("result")
-                # self.logger().info(f"at _update_order_fills_from_trades : res2 \n {results} \n\n")
+                self.logger().info(f"at _update_order_fills_from_trades : res2 \n {results} \n\n")
                 results = results["items"]           
-                # self.logger().info(f"at _update_order_fills_from_trades : res3 \n {results} \n\n")
+                self.logger().info(f"at _update_order_fills_from_trades : res3 \n {results} \n\n")
             else:
                 raise AttributeError(results["mc"])
 
-            for trade,trading_pair in zip(results,trading_pair):
+            for trade,trading_pair in zip(results,trading_pairs):
                     if isinstance(trade, Exception):
                         self.logger().network(
                             f"Error fetching trades update for the order {trading_pair}: {trade}.",
                             app_warning_msg=f"Failed to fetch trade update for {trading_pair}."
                         )
                         continue
-                    self.logger().info(f"at _update_order_fills_from_trades : res3 \n {trade} , {trading_pair}\n\n")
+                    self.logger().info(f"at _update_order_fills_from_trades : res4 \n {trade} , {trading_pair}\n\n")
                     exchange_order_id = trade["orderId"]
                     if exchange_order_id in order_by_exchange_id_map:
                         # This is a fild for a tracked order
